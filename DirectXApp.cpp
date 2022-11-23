@@ -26,7 +26,8 @@ bool DirectXApp::Initialise()
 	{
 		return false;
 	}
-	CalculateVertexNormals();
+	PopulateTeapotVertices();
+	CalculateTeapotVertexNormals();
 	OnResize(WM_EXITSIZEMOVE);
 	BuildGeometryBuffers();
 	BuildShaders();
@@ -88,7 +89,7 @@ void DirectXApp::Render()
 	_deviceContext->RSSetState(_rasteriserState.Get());
 
 	// Now draw the first cube
-	_deviceContext->DrawIndexed(ARRAYSIZE(indices), 0, 0);
+	_deviceContext->DrawIndexed(ARRAYSIZE(teapotIndices), 0, 0);
 
 	// Update the window
 	ThrowIfFailed(_swapChain->Present(0, 0));
@@ -229,7 +230,7 @@ void DirectXApp::BuildGeometryBuffers()
 	// buffer should be
 	D3D11_BUFFER_DESC vertexBufferDescriptor = { 0 };
 	vertexBufferDescriptor.Usage = D3D11_USAGE_IMMUTABLE;
-	vertexBufferDescriptor.ByteWidth = sizeof(Vertex) * ARRAYSIZE(vertices);
+	vertexBufferDescriptor.ByteWidth = sizeof(Vertex) * ARRAYSIZE(teapotVertices);
 	vertexBufferDescriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vertexBufferDescriptor.CPUAccessFlags = 0;
 	vertexBufferDescriptor.MiscFlags = 0;
@@ -238,7 +239,7 @@ void DirectXApp::BuildGeometryBuffers()
 	// Now set up a structure that tells DirectX where to get the
 	// data for the vertices from
 	D3D11_SUBRESOURCE_DATA vertexInitialisationData = { 0 };
-	vertexInitialisationData.pSysMem = &vertices;
+	vertexInitialisationData.pSysMem = &teapotVertices;
 
 	// and create the vertex buffer
 	ThrowIfFailed(_device->CreateBuffer(&vertexBufferDescriptor, &vertexInitialisationData, _vertexBuffer.GetAddressOf()));
@@ -247,7 +248,7 @@ void DirectXApp::BuildGeometryBuffers()
 	// buffer should be
 	D3D11_BUFFER_DESC indexBufferDescriptor = { 0 };
 	indexBufferDescriptor.Usage = D3D11_USAGE_IMMUTABLE;
-	indexBufferDescriptor.ByteWidth = sizeof(UINT) * ARRAYSIZE(indices);
+	indexBufferDescriptor.ByteWidth = sizeof(UINT) * ARRAYSIZE(teapotIndices);
 	indexBufferDescriptor.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	indexBufferDescriptor.CPUAccessFlags = 0;
 	indexBufferDescriptor.MiscFlags = 0;
@@ -256,7 +257,7 @@ void DirectXApp::BuildGeometryBuffers()
 	// Now set up a structure that tells DirectX where to get the
 	// data for the indices from
 	D3D11_SUBRESOURCE_DATA indexInitialisationData;
-	indexInitialisationData.pSysMem = &indices;
+	indexInitialisationData.pSysMem = &teapotIndices;
 
 	// and create the index buffer
 	ThrowIfFailed(_device->CreateBuffer(&indexBufferDescriptor, &indexInitialisationData, _indexBuffer.GetAddressOf()));
@@ -355,6 +356,12 @@ Vector3 DirectXApp::CalculatePolygonNormal(Vector3 p1, Vector3 p2, Vector3 p3) {
 	return normalVector;
 }
 
+void DirectXApp::PopulateTeapotVertices() {
+	for (int i = 0; i < ARRAYSIZE(teapotVertexFloats); i += 3) {
+		teapotVertices[i / 3] = { Vector3(teapotVertexFloats[i], teapotVertexFloats[i + 1], teapotVertexFloats[i + 2]), Vector3(0, 0, 0)};
+	}
+}
+
 void DirectXApp::CalculateVertexNormals() {
 	for (int i = 0; i < ARRAYSIZE(vertices); i++) {
 		polygonCount[i] = 0;
@@ -383,4 +390,44 @@ void DirectXApp::CalculateVertexNormals() {
 		vertices[i].Normal /= polygonCount[i];
 		vertices[i].Normal.Normalize();
 	}
+}
+
+void DirectXApp::CalculateTeapotVertexNormals() {
+	for (int i = 0; i < ARRAYSIZE(teapotVertices); i++) {
+		teapotPolygonCount[i] = 0;
+	}
+
+	UINT polygonIndicies[3];
+
+	for (int i = 0; i < ARRAYSIZE(teapotIndices); i += 3) {
+		polygonIndicies[0] = teapotIndices[i];
+		polygonIndicies[1] = teapotIndices[i + 1];
+		polygonIndicies[2] = teapotIndices[i + 2];
+
+		Vector3 polygonNormal = CalculatePolygonNormal(teapotVertices[teapotIndices[i]].Position, teapotVertices[teapotIndices[i + 1]].Position, teapotVertices[teapotIndices[i + 2]].Position);
+
+		teapotVertices[teapotIndices[i]].Normal = teapotVertices[teapotIndices[i]].Normal + polygonNormal;
+		teapotPolygonCount[teapotIndices[i]]++;
+
+		teapotVertices[teapotIndices[i + 1]].Normal = teapotVertices[teapotIndices[i + 1]].Normal + polygonNormal;
+		teapotPolygonCount[teapotIndices[i + 1]]++;
+
+		teapotVertices[teapotIndices[i + 2]].Normal = teapotVertices[teapotIndices[i + 2]].Normal + polygonNormal;
+		teapotPolygonCount[teapotIndices[i + 2]]++;
+	}
+
+	for (int i = 0; i < ARRAYSIZE(teapotVertices); i++) {
+		teapotVertices[i].Normal /= teapotPolygonCount[i];
+		teapotVertices[i].Normal.Normalize();
+	}
+}
+
+Vector3 DirectXApp::CalculateTeapotPolygonNormal(Vector3 p1, Vector3 p2, Vector3 p3) {
+
+	Vector3 v12 = p1 - p2;
+	Vector3 v13 = p1 - p3;
+
+	Vector3 normalVector = v12.Cross(v13);
+
+	return normalVector;
 }

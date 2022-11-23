@@ -60,6 +60,9 @@ private:
 	void BuildRasteriserState();
 	void CalculateVertexNormals();
 	Vector3 CalculatePolygonNormal(Vector3 p1, Vector3 p2, Vector3 p3);
+	void PopulateTeapotVertices();
+	void CalculateTeapotVertexNormals();
+	Vector3	CalculateTeapotPolygonNormal(Vector3 p1, Vector3 p2, Vector3 p3);
 
 };
 
