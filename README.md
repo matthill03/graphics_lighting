@@ -1,1 +1,1 @@
-# DirectX_Cube_Week7
+# Creaing lighting in directX application
